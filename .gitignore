@@ -45,3 +45,14 @@ node_modules/
 .render/
 .pytest_cache/
 .coverage
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+*.swp
+*.swo
