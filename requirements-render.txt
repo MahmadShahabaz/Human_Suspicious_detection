@@ -1,0 +1,25 @@
+# Python 3.9 CPU runtime for the persistent SHAS web service.
+--extra-index-url https://download.pytorch.org/whl/cpu
+Flask==3.1.0
+gunicorn==23.0.0
+numpy==1.23.5
+telepot==12.7
+GitPython==3.1.44
+matplotlib==3.7.5
+opencv-python-headless==4.7.0.72
+Pillow==9.5.0
+psutil==7.0.0
+PyYAML==6.0.2
+requests==2.32.3
+scipy==1.10.1
+thop==0.1.1.post2209072238
+torch==1.10.2+cpu
+torchvision==0.11.3+cpu
+tqdm==4.67.1
+ultralytics==8.3.96
+pandas==2.2.3
+seaborn==0.13.2
+tensorflow==2.7.0
+Keras==2.7.0
+protobuf==3.20.3
+setuptools==75.8.0

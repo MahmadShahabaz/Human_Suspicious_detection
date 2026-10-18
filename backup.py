@@ -7,9 +7,12 @@ import platform
 import sys
 from pathlib import Path
 import telepot
-bot=telepot.Bot('8061231695:AAEW0GlXz078utN9tPvJhxJqH_PSvJDBj9A')
-bot2=telepot.Bot("7854223119:AAGjqwlNJqb0Z_V_F1GGkjwedNPZVOhDZ-U")
-ch_id="1306083300"
+bot_token = os.getenv('TELEGRAM_BOT_TOKEN', '')
+bot = telepot.Bot(bot_token) if bot_token and os.getenv('TELEGRAM_CHAT_ID') else None
+bot_token_secondary = os.getenv('TELEGRAM_BOT_TOKEN_SECONDARY', '')
+bot2 = telepot.Bot(bot_token_secondary) if bot_token_secondary and os.getenv('TELEGRAM_CHAT_ID_SECONDARY') else None
+ch_id = os.getenv('TELEGRAM_CHAT_ID', '')
+ch_id_secondary = os.getenv('TELEGRAM_CHAT_ID_SECONDARY', '')
 import pathlib
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
@@ -198,8 +201,10 @@ def run(
                         c = int(cls)  # integer class
                         label = None if hide_labels else (names[c] if hide_conf else f"{names[c]} {conf:.2f}")
                         annotator.box_label(xyxy, label, color=colors(c, True))
-                        bot.sendMessage('5102198180',f"weapon detected ")
-                        bot2.sendMessage(ch_id,f"weapon detected ")
+                        if bot is not None:
+                            bot.sendMessage(ch_id, "weapon detected")
+                        if bot2 is not None:
+                            bot2.sendMessage(ch_id_secondary, "weapon detected")
                     if save_crop:
                         save_one_box(xyxy, imc, file=save_dir / "crops" / names[c] / f"{p.stem}.jpg", BGR=True)
 

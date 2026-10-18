@@ -2,18 +2,21 @@ import os
 import sys
 import time
 import threading
+import pathlib
 from pathlib import Path
 import cv2
 import numpy as np
 import torch
 import telepot
 
-# Fix PosixPath on Windows
-import pathlib
-temp = pathlib.PosixPath
-pathlib.PosixPath = pathlib.WindowsPath
+# Older serialized checkpoints created on Windows may contain WindowsPath values.
+if os.name == 'nt':
+    temp = pathlib.PosixPath
+    pathlib.PosixPath = pathlib.WindowsPath
 
 ROOT = Path(__file__).resolve().parent
+MODEL_DIR = Path(os.getenv('SHAS_MODEL_DIR', str(ROOT))).expanduser().resolve()
+UPLOAD_DIR = Path(os.getenv('SHAS_UPLOAD_DIR', str(ROOT / 'uploads'))).expanduser().resolve()
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
@@ -63,28 +66,28 @@ _DEVICE = select_device('cpu')
 
 MODEL_CONFIGS = {
     'weapon': {
-        'weights': str(ROOT / 'kni_axe.pt'),
+        'weights': str(MODEL_DIR / 'kni_axe.pt'),
         'title': 'YOLO Weapon Detection',
         'classes': None, # detect all classes in model (knife, pistol)
         'conf_thres': 0.25,
         'iou_thres': 0.45,
     },
     'accident': {
-        'weights': str(ROOT / 'ACCIDENT.pt'),
+        'weights': str(MODEL_DIR / 'ACCIDENT.pt'),
         'title': 'YOLO Accident Detection',
         'classes': None,
         'conf_thres': 0.25,
         'iou_thres': 0.45,
     },
     'explosion': {
-        'weights': str(ROOT / 'fire.pt'),
+        'weights': str(MODEL_DIR / 'fire.pt'),
         'title': 'YOLO Explosion Detection',
         'classes': None,
         'conf_thres': 0.25,
         'iou_thres': 0.45,
     },
     'person': {
-        'weights': str(ROOT / 'yolov5s.pt'),
+        'weights': str(MODEL_DIR / 'yolov5s.pt'),
         'title': 'Multiple Person Detection',
         'classes': [0], # COCO person class
         'conf_thres': 0.25,
@@ -190,7 +193,7 @@ def resolve_video_source(source_str):
     candidate_paths = [
         source_clean,
         str(ROOT / source_clean),
-        str(ROOT / 'uploads' / source_clean),
+        str(UPLOAD_DIR / source_clean),
         str(ROOT / 'test' / source_clean),
         str(ROOT / 'testweapon' / source_clean),
         str(ROOT / 'testaccident' / source_clean),
@@ -231,7 +234,7 @@ def stream_yolo_detection(module_key, source_str, token):
     # Open video capture
     is_webcam = (resolved_src == 0)
     if is_webcam:
-        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW) if os.name == 'nt' else cv2.VideoCapture(0)
     else:
         cap = cv2.VideoCapture(resolved_src)
 
@@ -347,7 +350,7 @@ def stream_action_recognition(source_str, token):
         return
 
     is_webcam = (resolved_src == 0)
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW) if is_webcam else cv2.VideoCapture(resolved_src)
+    cap = (cv2.VideoCapture(0, cv2.CAP_DSHOW) if os.name == 'nt' else cv2.VideoCapture(0)) if is_webcam else cv2.VideoCapture(resolved_src)
 
     if not cap.isOpened():
         err_msg = "Could not open Webcam 0" if is_webcam else f"Cannot decode video: {display_name}"

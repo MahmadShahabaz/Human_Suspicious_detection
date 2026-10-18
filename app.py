@@ -1,3 +1,4 @@
+from pathlib import Path
 from flask import Flask, render_template, url_for, request, Response, jsonify
 import sqlite3
 import os
@@ -5,7 +6,29 @@ from werkzeug.utils import secure_filename
 from stream_engine import generate_frames, get_new_stream_token, stop_all_streams
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'uploads')
+ROOT = Path(__file__).resolve().parent
+DATA_DIR = Path(os.getenv('SHAS_DATA_DIR', str(ROOT))).expanduser().resolve()
+UPLOAD_FOLDER = Path(os.getenv('SHAS_UPLOAD_DIR', str(DATA_DIR / 'uploads'))).expanduser().resolve()
+DATABASE_PATH = Path(os.getenv('SHAS_DATABASE_PATH', str(DATA_DIR / 'user_data.db'))).expanduser().resolve()
+MODEL_DIR = Path(os.getenv('SHAS_MODEL_DIR', str(ROOT))).expanduser().resolve()
+UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
+app.config['DATABASE_PATH'] = str(DATABASE_PATH)
+app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('SHAS_MAX_UPLOAD_BYTES', str(512 * 1024 * 1024)))
+
+
+@app.route('/healthz')
+def healthz():
+    return jsonify({'status': 'ok', 'service': 'shas'})
+
+
+@app.route('/health/models')
+def model_health():
+    required = ('kni_axe.pt', 'ACCIDENT.pt', 'fire.pt', 'yolov5s.pt', 'model_new.h5')
+    models = {name: (MODEL_DIR / name).is_file() for name in required}
+    ready = all(models.values())
+    return jsonify({'status': 'ready' if ready else 'models_missing', 'models': models}), (200 if ready else 503)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 @app.route('/')
@@ -15,7 +38,7 @@ def index():
 @app.route('/userlog', methods=['GET', 'POST'])
 def userlog():
     if request.method == 'POST':
-        connection = sqlite3.connect('user_data.db')
+        connection = sqlite3.connect(app.config['DATABASE_PATH'])
         cursor = connection.cursor()
 
         name = request.form.get('name', '')
@@ -37,7 +60,7 @@ def userlog():
 @app.route('/userreg', methods=['GET', 'POST'])
 def userreg():
     if request.method == 'POST':
-        connection = sqlite3.connect('user_data.db')
+        connection = sqlite3.connect(app.config['DATABASE_PATH'])
         cursor = connection.cursor()
 
         name = request.form.get('name', '')
@@ -88,7 +111,7 @@ def upload_video():
     filename = secure_filename(file.filename)
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
-    relative_path = os.path.join('uploads', filename)
+    relative_path = f"uploads/{filename}"
     return jsonify({
         'status': 'success',
         'filename': filename,
@@ -143,4 +166,4 @@ def Live4():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', '5000')), debug=False, use_reloader=False)

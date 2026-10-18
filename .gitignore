@@ -21,12 +21,12 @@ pip-wheel-metadata/
 *.db
 *.sqlite
 *.sqlite3
+*.log
 uploads/*
 !uploads/.gitkeep
 runs/
 output/*.png
 temp.txt
-*.log
 
 # Large model weights: store separately and download/provision at runtime
 *.pt
@@ -41,3 +41,6 @@ dist/
 *.egg-info/
 node_modules/
 .vercel/
+.render/
+.pytest_cache/
+.coverage

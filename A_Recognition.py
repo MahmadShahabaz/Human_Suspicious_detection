@@ -5,6 +5,7 @@ from model.slowfast import SlowFast_body, bottleneck
 import cv2
 import numpy as np
 import os
+from pathlib import Path
 import time
 from PIL import Image
 from PIL import ImageDraw
@@ -92,6 +93,8 @@ model.compile(loss='categorical_crossentropy',
 # model.summary()
 
 # We load the weights directly
-model.load_weights("model_new.h5")
+ROOT = Path(__file__).resolve().parent
+MODEL_DIR = Path(os.getenv('SHAS_MODEL_DIR', str(ROOT))).expanduser().resolve()
+model.load_weights(str(MODEL_DIR / "model_new.h5"))
 def analyse(fileName):  
     predictions(video_dir = fileName, model = model, nb_frames = 25, img_size = 224)

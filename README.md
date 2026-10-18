@@ -1,66 +1,63 @@
 # SHAS — Suspicious Human Activity Detection and Alert System
 
-SHAS is a monolithic Flask application for reviewing video and running suspicious-activity detection. The Flask app serves its own HTML templates and static assets; there is no separate frontend build. Detection uses OpenCV, PyTorch, YOLO models, and an action-recognition model. The app can also send Telegram alerts when configured.
+SHAS is a single Flask application that serves its own HTML templates and static assets and performs video inference in a persistent Python process. It includes suspicious-activity recognition, weapon, accident, fire/explosion, and multiple-person detection, plus optional Telegram alerts.
 
-## Features
+## Project components
 
-- Flask login/registration screens and detection dashboard
-- Video upload and multipart video-stream endpoints
-- Weapon, accident, explosion, person, and action-recognition modules
-- Optional Telegram notifications
-
-## Project layout
-
-- `app.py` — Flask application and routes; WSGI entry point is `app:app`
-- `stream_engine.py`, `detect*.py`, `A_Recognition.py`, `models/`, `utils/` — inference and model code
+- `app.py` — Flask routes and WSGI entry point (`app:app`), including upload and health endpoints
+- `stream_engine.py`, `A_Recognition.py`, `detect*.py`, `models/`, `model/`, `utils/` — inference code
 - `templates/`, `static/` — Flask-served UI
-- `test/`, `testweapon/`, `testaccident/`, `testexplosion/`, `testperson/` — sample input videos
-- `Labels/`, `TRAINING/`, `train.py` — training data metadata and training utilities
+- `requirements.txt` — general development/training dependencies
+- `requirements-render.txt` — pinned Python 3.9 CPU serving stack
+- `render.yaml` — Render web service, persistent disk, environment, and health-check configuration
+- `scripts/prepare_model_assets.py` — optionally provisions model files from a private tar.gz URL
 
-## Requirements and model files
+## Models and persistent data
 
-Use Python 3.10 or 3.11 on a Linux host with enough memory and disk for CPU PyTorch and OpenCV. Install `requirements.txt` in a virtual environment. The model weights (`*.pt`, `*.h5`) are intentionally excluded from Git because they are large binary artifacts. The current code expects `kni_axe.pt`, `ACCIDENT.pt`, `fire.pt`, `yolov5s.pt`, and `model_new.h5` in the project root; provision the matching files there before starting the app. Keep them in private object storage or a model registry, and do not commit them.
+Five files are required for all dashboard detection modules: `kni_axe.pt`, `ACCIDENT.pt`, `fire.pt`, `yolov5s.pt`, and `model_new.h5`. They are intentionally not stored in Git. Provision the original files in the directory set by `SHAS_MODEL_DIR`; do not replace them with dummy models. `person.pt` is also retained locally but is not referenced by the dashboard's current model configuration.
 
-```bash
-python -m venv .venv
-# Linux/macOS: source .venv/bin/activate
-# Windows PowerShell: .venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+The Render Blueprint mounts a 10 GB persistent disk at `/var/data`, storing models in `/var/data/models`, uploads in `/var/data/uploads`, and SQLite data in `/var/data/user_data.db`. Set `SHAS_MODEL_ARCHIVE_URL` to a private `.tar.gz` archive containing the five model files (archive entries may be at the root or in subdirectories). If the URL requires a bearer token, set `SHAS_MODEL_ARCHIVE_TOKEN`. The startup helper downloads and extracts only the allow-listed model filenames. Without a configured archive or manually provisioned files, the service can start and serve the UI, but `/health/models` returns HTTP 503 and detection endpoints report the missing models.
+
+The original weights in the local working copy are preserved and remain excluded from Git. Create a private archive for transfer without adding it to the repository:
+
+```powershell
+tar -czf shas-models.tar.gz kni_axe.pt ACCIDENT.pt fire.pt yolov5s.pt model_new.h5
 ```
 
-## Configuration
+Upload that archive to private object storage and configure its short-lived, read-only URL only in Render's environment settings. Keep archive credentials and signed URLs private. Alternatively, transfer the files to `/var/data/models` using an authorized Render shell/session.
 
-Copy `.env.example` to `.env` for local development and set credentials as needed. Never commit `.env`.
+## Local development
 
-- `TELEGRAM_BOT_TOKEN` — optional Telegram bot token
-- `TELEGRAM_CHAT_ID` — optional destination chat/channel ID
+Python 3.9 is required for the pinned legacy TensorFlow action model. For a local setup, install the project dependencies appropriate to your OS and activate a virtual environment. The general `requirements.txt` supports development and training; the Render requirements target Linux CPU serving.
 
-If either Telegram variable is unset, Telegram alerts are disabled. The current application uses a local SQLite database (`user_data.db`) for registration and login; it is ignored by Git and is not a production persistent database. Configure durable database storage and secure password handling before exposing registration/login publicly.
-
-## Run locally
-
-```bash
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
 python app.py
 ```
 
-Open `http://127.0.0.1:5000`. For a production WSGI server, install the requirements and run:
+Open `http://127.0.0.1:5000`. `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are optional; alerts are disabled if they are not set. The app accepts `SHAS_DATA_DIR`, `SHAS_MODEL_DIR`, `SHAS_UPLOAD_DIR`, `SHAS_DATABASE_PATH`, and `SHAS_MAX_UPLOAD_BYTES` to place writable data outside the source directory.
 
-```bash
-gunicorn --workers 1 --threads 8 --timeout 120 app:app
-```
+## Deploy the backend on Render
 
-Use a single worker because the stream controller and loaded models are process-local. Configure a reverse proxy and TLS, restrict access, and provide persistent storage for uploads and the database if those features are needed.
+This app is not a Vercel serverless application. Its multipart `/video_feed` endpoint is long-running, OpenCV/PyTorch/TensorFlow load native libraries and local model files, and inference runs inside the server process. Vercel previously rejected the generated Python function bundle at approximately 5,933.56 MB against a 500 MB limit. Do not omit model weights to get that deployment through.
 
-## Deployment architecture
+Connect this GitHub repository to Render and create a Blueprint from `render.yaml` (or create a web service with the same settings). The configuration selects Python 3.9.18, CPU-only Torch, one Gunicorn worker, four request threads, a 4 CPU / 8 GB plan, Singapore region, and a 10 GB persistent disk. The existing templates and static files stay with Flask, so there is no separate Vercel frontend or cross-origin API configuration in this repository.
 
-This is a monolithic Flask app, not a static frontend. Vercel is not a suitable host for the complete application: `/video_feed` returns a long-running multipart stream, inference loads local model files and native computer-vision dependencies, and camera access/background work require a persistent process. Deploy the application to a VM or container host that supports long-lived Python processes, persistent model files, and sufficient CPU/GPU resources. Vercel may host a separately built frontend in a future split architecture, but this repository has no such frontend today. No Vercel configuration is included.
+Before expecting full detection, provision all five required model files on the persistent disk or configure `SHAS_MODEL_ARCHIVE_URL`. Set optional Telegram values in the provider dashboard, never in Git. Then verify:
 
-The deployment host must provide the model weights outside Git and set Telegram environment variables if alerts are desired. Validate the stream, uploads, database persistence, resource use, and access controls on that host. Sample videos and trained models do not make a server-side deployment compatible with browser camera access.
+- `https://<service>.onrender.com/` — Flask UI
+- `https://<service>.onrender.com/healthz` — process health
+- `https://<service>.onrender.com/health/models` — model-file readiness (200 only when all five are present)
 
-## Security and limitations
+The service runs inference on CPU; video inference may be slower than a GPU workstation. A Render service cannot access a camera attached to the user's browser or local computer. Uploaded videos can be processed by the server. A persistent disk attaches to one service instance, so the configured single process/instance avoids relying on ephemeral local storage or in-memory coordination across replicas.
 
-- Rotate the Telegram bot token that was previously embedded in `stream_engine.py`; the code now reads it from the environment.
-- The existing login implementation stores plaintext passwords and is for demonstration only. Do not expose it to untrusted users until password hashing, session authentication, CSRF protection, and persistent database storage are implemented.
-- Restrict upload size and file types at the reverse proxy/application layer before public deployment.
-- Do not use detection output as the sole basis for safety-critical decisions.
+## Production notes
+
+- SQLite and uploaded media are stored on the persistent disk. Back up this disk/database according to your retention needs.
+- The existing login/registration code stores plaintext passwords and has no session-based authentication or CSRF protection. It is demonstration code and should not be exposed to untrusted users without a security redesign.
+- Webcam capture works only when a camera is physically accessible to the Python host; remote browser webcam access is not implemented.
+- Limit access to uploaded videos and detection output. Configure a production domain/TLS and review request-size limits before public use.
+- Do not use model results as the sole basis for safety-critical decisions.

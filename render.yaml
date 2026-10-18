@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: shas-backend
+    runtime: python
+    plan: 4c-8g
+    region: singapore
+    branch: main
+    buildCommand: pip install -r requirements-render.txt
+    startCommand: python scripts/prepare_model_assets.py && gunicorn app:app --workers 1 --threads 4 --timeout 300 --bind 0.0.0.0:$PORT
+    healthCheckPath: /healthz
+    disk:
+      name: shas-data
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.18
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: SHAS_DATA_DIR
+        value: /var/data
+      - key: SHAS_MODEL_DIR
+        value: /var/data/models
+      - key: SHAS_UPLOAD_DIR
+        value: /var/data/uploads
+      - key: SHAS_DATABASE_PATH
+        value: /var/data/user_data.db
+      - key: SHAS_MAX_UPLOAD_BYTES
+        value: "536870912"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN_SECONDARY
+        sync: false
+      - key: TELEGRAM_CHAT_ID_SECONDARY
+        sync: false
+      - key: SHAS_MODEL_ARCHIVE_URL
+        sync: false
+      - key: SHAS_MODEL_ARCHIVE_TOKEN
+        sync: false
