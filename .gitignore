@@ -1,0 +1,43 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+.venv/
+.envdir/
+pip-wheel-metadata/
+
+# Local data and generated output
+*.db
+*.sqlite
+*.sqlite3
+uploads/*
+!uploads/.gitkeep
+runs/
+output/*.png
+temp.txt
+*.log
+
+# Large model weights: store separately and download/provision at runtime
+*.pt
+*.pth
+*.h5
+*.onnx
+*.engine
+
+# Build/dependency artifacts
+build/
+dist/
+*.egg-info/
+node_modules/
+.vercel/

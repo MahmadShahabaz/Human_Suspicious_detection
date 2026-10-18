@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Suspicious Human Activity Detection and Alert System</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+
+  <style>
+    body {
+      background-image: url('https://miro.medium.com/v2/resize:fit:1400/0*blhdwOt6gQNrmGwq');
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-attachment: fixed;
+      background-position: center;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #fff;
+      padding-bottom: 60px;
+    }
+
+    .navbar-inverse {
+      background-color: rgba(10, 10, 15, 0.9);
+      border-color: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+    }
+
+    .navbar-inverse .navbar-brand {
+      color: #00e5ff;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .dashboard-title-banner {
+      text-align: center;
+      margin-top: 10px;
+      margin-bottom: 25px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+    }
+    .dashboard-title-banner h2 {
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 5px;
+    }
+    .dashboard-title-banner p {
+      color: #cfd8dc;
+      font-size: 15px;
+    }
+
+    /* Cards Grid */
+    #content {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      padding: 0 10px;
+    }
+
+    .detection-card {
+      flex: 1 1 210px;
+      max-width: 260px;
+      min-width: 220px;
+      padding: 20px;
+      background: rgba(15, 18, 26, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(6px);
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      color: white;
+    }
+
+    .detection-card:hover {
+      transform: translateY(-4px);
+      border-color: #00e5ff;
+      box-shadow: 0 12px 28px rgba(0, 229, 255, 0.2);
+    }
+
+    .detection-card.active-card {
+      border-color: #00e676;
+      box-shadow: 0 0 18px rgba(0, 230, 118, 0.4);
+    }
+
+    .card-icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+      color: #00e5ff;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-top: 0;
+      margin-bottom: 6px;
+      color: #ffffff;
+    }
+
+    .model-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(0, 229, 255, 0.15);
+      color: #80d8ff;
+      border: 1px solid rgba(0, 229, 255, 0.3);
+      margin-bottom: 15px;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      color: #b0bec5;
+      font-weight: 500;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .form-control {
+      background-color: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      border-radius: 6px;
+      font-size: 12px;
+      height: 34px;
+    }
+
+    .form-control:focus {
+      background-color: rgba(255, 255, 255, 0.14);
+      border-color: #00e5ff;
+      color: #ffffff;
+      box-shadow: none;
+    }
+
+    .form-control option {
+      background-color: #1a1e29;
+      color: #ffffff;
+    }
+
+    .webcam-toggle {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin-bottom: 14px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+    }
+
+    .webcam-toggle input[type="checkbox"] {
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .btn-detect {
+      width: 100%;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+    }
+
+    /* Video Display Section */
+    #videoSection {
+      display: none;
+      max-width: 960px;
+      margin: 35px auto 10px auto;
+      background: rgba(12, 16, 24, 0.92);
+      border: 1px solid rgba(0, 229, 255, 0.35);
+      border-radius: 14px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+
+    .video-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 22px;
+      background: rgba(20, 25, 38, 0.95);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .video-header-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-pulse {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #00e676;
+      box-shadow: 0 0 8px #00e676;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7); }
+      70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(0, 230, 118, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); }
+    }
+
+    .video-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .video-container {
+      position: relative;
+      background: #000;
+      min-height: 420px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #streamImage {
+      max-width: 100%;
+      max-height: 600px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border-left-color: #00e5ff;
+      animation: spin 1s linear infinite;
+      margin-bottom: 14px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .telemetry-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      padding: 10px 20px;
+      background: rgba(18, 22, 33, 0.95);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 13px;
+      color: #90a4ae;
+    }
+
+    .telemetry-item strong {
+      color: #e0f7fa;
+    }
+
+    .alert-banner {
+      margin: 15px 20px 0 20px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-inverse">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>                        
+      </button>
+      <a class="navbar-brand" href="/">
+        <i class="fa fa-shield" style="margin-right: 6px;"></i> Suspicious Human Activity Detection and Alert System
+      </a>
+    </div>
+    <div class="collapse navbar-collapse" id="myNavbar">
+      <ul class="nav navbar-nav navbar-right">
+        <li><a href="/" onclick="stopStream(false)"><span class="glyphicon glyphicon-log-out"></span> Logout</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container-fluid">
+  <div class="dashboard-title-banner">
+    <h2>Multi-Modal AI Threat & Safety Detection System</h2>
+    <p>Select any module below to execute deep neural network inference and stream live video output inside the dashboard.</p>
+  </div>
+
+  <div id="content">
+    <!-- Card 1: Action Recognition -->
+    <div class="detection-card" id="card_analyse">
+      <center>
+        <div class="card-icon"><i class="fa fa-child"></i></div>
+        <h3 class="card-title">Analyse</h3>
+        <span class="model-badge">SlowFast 3D ResNet-50</span>
+      </center>
+      <div class="form-group">
+        <label for="select_sample_analyse">Sample Test Video:</label>
+        <select class="form-control" id="select_sample_analyse" onchange="onSampleSelected('analyse')">
+          <option value="">-- Choose Sample Video --</option>
+          <option value="test/test1.mp4" selected>test1.mp4 (Sample 1)</option>
+          <option value="test/test2.mp4">test2.mp4 (Sample 2)</option>
+          <option value="test/test3.mp4">test3.mp4 (Sample 3)</option>
+          <option value="test/test4.mp4">test4.mp4 (Sample 4)</option>
+          <option value="test/test5.mp4">test5.mp4 (Sample 5)</option>
+          <option value="test/test6.mp4">test6.mp4 (Sample 6)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="file_analyse">Or Upload Custom Video:</label>
+        <input type="file" class="form-control" id="file_analyse" accept="video/*" onchange="onFileSelected('analyse')">
+      </div>
+      <label class="webcam-toggle">
+        <input type="checkbox" id="webcam_analyse" onchange="onWebcamToggled('analyse')">
+        <span>Use Live Webcam</span>
+      </label>
+      <button type="button" class="btn btn-success btn-detect" onclick="startDetection('analyse')">
+        <i class="fa fa-play" style="margin-right: 5px;"></i> Action Analyse
+      </button>
+    </div>
+
+    <!-- Card 2: YOLO Weapon -->
+    <div class="detection-card" id="card_weapon">
+      <center>
+        <div class="card-icon"><i class="fa fa-crosshairs"></i></div>
+        <h3 class="card-title">YOLO Weapon</h3>
+        <span class="model-badge">kni_axe.pt (Knife & Pistol)</span>
+      </center>
+      <div class="form-group">
+        <label for="select_sample_weapon">Sample Test Video:</label>
+        <select class="form-control" id="select_sample_weapon" onchange="onSampleSelected('weapon')">
+          <option value="testweapon/pistol.mp4" selected>pistol.mp4 (Weapon Demo)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="file_weapon">Or Upload Custom Video:</label>
+        <input type="file" class="form-control" id="file_weapon" accept="video/*" onchange="onFileSelected('weapon')">
+      </div>
+      <label class="webcam-toggle">
+        <input type="checkbox" id="webcam_weapon" onchange="onWebcamToggled('weapon')">
+        <span>Use Live Webcam</span>
+      </label>
+      <button type="button" class="btn btn-danger btn-detect" onclick="startDetection('weapon')">
+        <i class="fa fa-crosshairs" style="margin-right: 5px;"></i> Weapon Detect
+      </button>
+    </div>
+
+    <!-- Card 3: YOLO Accident -->
+    <div class="detection-card" id="card_accident">
+      <center>
+        <div class="card-icon"><i class="fa fa-car"></i></div>
+        <h3 class="card-title">YOLO Accident</h3>
+        <span class="model-badge">ACCIDENT.pt</span>
+      </center>
+      <div class="form-group">
+        <label for="select_sample_accident">Sample Test Video:</label>
+        <select class="form-control" id="select_sample_accident" onchange="onSampleSelected('accident')">
+          <option value="testaccident/test1.mp4" selected>test1.mp4 (Accident 1)</option>
+          <option value="testaccident/test2.mp4">test2.mp4 (Accident 2)</option>
+          <option value="testaccident/test3.mp4">test3.mp4 (Accident 3)</option>
+          <option value="testaccident/test4.mp4">test4.mp4 (Accident 4)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="file_accident">Or Upload Custom Video:</label>
+        <input type="file" class="form-control" id="file_accident" accept="video/*" onchange="onFileSelected('accident')">
+      </div>
+      <label class="webcam-toggle">
+        <input type="checkbox" id="webcam_accident" onchange="onWebcamToggled('accident')">
+        <span>Use Live Webcam</span>
+      </label>
+      <button type="button" class="btn btn-warning btn-detect" onclick="startDetection('accident')">
+        <i class="fa fa-exclamation-triangle" style="margin-right: 5px;"></i> Accident Detect
+      </button>
+    </div>
+
+    <!-- Card 4: YOLO Explosion -->
+    <div class="detection-card" id="card_explosion">
+      <center>
+        <div class="card-icon"><i class="fa fa-fire"></i></div>
+        <h3 class="card-title">YOLO Explosion</h3>
+        <span class="model-badge">fire.pt (Fire / Explosion)</span>
+      </center>
+      <div class="form-group">
+        <label for="select_sample_explosion">Sample Test Video:</label>
+        <select class="form-control" id="select_sample_explosion" onchange="onSampleSelected('explosion')">
+          <option value="testexplosion/test1.mp4" selected>test1.mp4 (Explosion 1)</option>
+          <option value="testexplosion/test2.mp4">test2.mp4 (Explosion 2)</option>
+          <option value="testexplosion/test3.mp4">test3.mp4 (Explosion 3)</option>
+          <option value="testexplosion/test4.mp4">test4.mp4 (Explosion 4)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="file_explosion">Or Upload Custom Video:</label>
+        <input type="file" class="form-control" id="file_explosion" accept="video/*" onchange="onFileSelected('explosion')">
+      </div>
+      <label class="webcam-toggle">
+        <input type="checkbox" id="webcam_explosion" onchange="onWebcamToggled('explosion')">
+        <span>Use Live Webcam</span>
+      </label>
+      <button type="button" class="btn btn-info btn-detect" onclick="startDetection('explosion')">
+        <i class="fa fa-fire" style="margin-right: 5px;"></i> Explosion Detect
+      </button>
+    </div>
+
+    <!-- Card 5: Multiple Person Detection -->
+    <div class="detection-card" id="card_person">
+      <center>
+        <div class="card-icon"><i class="fa fa-users"></i></div>
+        <h3 class="card-title">Person Detection</h3>
+        <span class="model-badge">yolov5s.pt (Person Counting)</span>
+      </center>
+      <div class="form-group">
+        <label for="select_sample_person">Sample Test Video:</label>
+        <select class="form-control" id="select_sample_person" onchange="onSampleSelected('person')">
+          <option value="testperson/test1.mp4" selected>test1.mp4 (Crowd Sample)</option>
+          <option value="test/test2.mp4">test2.mp4 (Pedestrian Sample)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="file_person">Or Upload Custom Video:</label>
+        <input type="file" class="form-control" id="file_person" accept="video/*" onchange="onFileSelected('person')">
+      </div>
+      <label class="webcam-toggle">
+        <input type="checkbox" id="webcam_person" onchange="onWebcamToggled('person')">
+        <span>Use Live Webcam</span>
+      </label>
+      <button type="button" class="btn btn-primary btn-detect" onclick="startDetection('person')">
+        <i class="fa fa-users" style="margin-right: 5px;"></i> Person Detect
+      </button>
+    </div>
+  </div>
+
+  <!-- Video Output Panel -->
+  <div id="videoSection">
+    <div class="video-header">
+      <div class="video-header-title">
+        <span class="status-pulse" id="statusIndicator"></span>
+        <span id="activeModuleTitle">AI Detection Output Feed</span>
+      </div>
+      <div class="video-controls">
+        <button class="btn btn-danger btn-sm" id="btnStop" onclick="stopStream(true)">
+          <i class="fa fa-stop" style="margin-right: 4px;"></i> Stop Detection
+        </button>
+        <button class="btn btn-info btn-sm" id="btnRestart" onclick="restartStream()">
+          <i class="fa fa-refresh" style="margin-right: 4px;"></i> Restart
+        </button>
+        <button class="btn btn-default btn-sm" onclick="hideVideoSection()">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="alert alert-danger alert-banner" id="errorBanner">
+      <i class="fa fa-exclamation-circle" style="margin-right: 6px;"></i>
+      <span id="errorMessage">An error occurred while streaming.</span>
+    </div>
+
+    <div class="video-container">
+      <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div id="loadingText" style="color: #00e5ff; font-weight: 600;">Initializing AI Model & Stream...</div>
+        <div style="color: #b0bec5; font-size: 12px; margin-top: 5px;">Decoding frames and running real-time neural network inference</div>
+      </div>
+      <img id="streamImage" alt="Real-time Detection Output Stream" onload="onStreamLoaded()" onerror="onStreamError()">
+    </div>
+
+    <div class="telemetry-bar">
+      <div class="telemetry-item">
+        Active Module: <strong id="telemetryModule">None</strong>
+      </div>
+      <div class="telemetry-item">
+        Source: <strong id="telemetrySource">None</strong>
+      </div>
+      <div class="telemetry-item">
+        Telegram Alerts: <strong style="color: #00e676;"><i class="fa fa-paper-plane"></i> Active (@Univarsalatm_bot)</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentActiveModule = null;
+  let currentActiveSource = null;
+  let isStreaming = false;
+
+  const MODULE_METADATA = {
+    'analyse': {
+      title: 'Action Recognition: SlowFast 3D ResNet-50',
+      badge: 'Action Recognition',
+      defaultSample: 'test/test1.mp4'
+    },
+    'weapon': {
+      title: 'YOLO Weapon Detection: Knives & Pistols',
+      badge: 'Weapon Detection',
+      defaultSample: 'testweapon/pistol.mp4'
+    },
+    'accident': {
+      title: 'YOLO Accident Detection: Road Hazards',
+      badge: 'Accident Detection',
+      defaultSample: 'testaccident/test1.mp4'
+    },
+    'explosion': {
+      title: 'YOLO Explosion Detection: Fire & Flame',
+      badge: 'Explosion Detection',
+      defaultSample: 'testexplosion/test1.mp4'
+    },
+    'person': {
+      title: 'Multiple Person Detection & Counting',
+      badge: 'Person Detection',
+      defaultSample: 'testperson/test1.mp4'
+    }
+  };
+
+  function onWebcamToggled(moduleKey) {
+    const isChecked = document.getElementById(`webcam_${moduleKey}`).checked;
+    const fileInput = document.getElementById(`file_${moduleKey}`);
+    const sampleSelect = document.getElementById(`select_sample_${moduleKey}`);
+    if (isChecked) {
+      if (fileInput) fileInput.disabled = true;
+      if (sampleSelect) sampleSelect.disabled = true;
+    } else {
+      if (fileInput) fileInput.disabled = false;
+      if (sampleSelect) sampleSelect.disabled = false;
+    }
+  }
+
+  function onFileSelected(moduleKey) {
+    const fileInput = document.getElementById(`file_${moduleKey}`);
+    if (fileInput.files.length > 0) {
+      document.getElementById(`webcam_${moduleKey}`).checked = false;
+      onWebcamToggled(moduleKey);
+    }
+  }
+
+  function onSampleSelected(moduleKey) {
+    const sampleSelect = document.getElementById(`select_sample_${moduleKey}`);
+    if (sampleSelect.value) {
+      document.getElementById(`webcam_${moduleKey}`).checked = false;
+      onWebcamToggled(moduleKey);
+      const fileInput = document.getElementById(`file_${moduleKey}`);
+      if (fileInput) fileInput.value = '';
+    }
+  }
+
+  async function resolveSourceForModule(moduleKey) {
+    const isWebcam = document.getElementById(`webcam_${moduleKey}`).checked;
+    if (isWebcam) {
+      return '0';
+    }
+
+    const fileInput = document.getElementById(`file_${moduleKey}`);
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+      // User uploaded a local file: send it to /upload_video
+      showLoading(`Uploading ${fileInput.files[0].name}...`);
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      try {
+        const resp = await fetch('/upload_video', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await resp.json();
+        if (data.status === 'success') {
+          return data.path;
+        } else {
+          throw new Error(data.error || 'Upload failed');
+        }
+      } catch (err) {
+        showError('Upload Error: ' + err.message);
+        throw err;
+      }
+    }
+
+    const sampleSelect = document.getElementById(`select_sample_${moduleKey}`);
+    if (sampleSelect && sampleSelect.value) {
+      return sampleSelect.value;
+    }
+
+    // Default fallback sample
+    return MODULE_METADATA[moduleKey].defaultSample || '0';
+  }
+
+  async function startDetection(moduleKey) {
+    // 1. Highlight active card
+    document.querySelectorAll('.detection-card').forEach(el => el.classList.remove('active-card'));
+    const cardEl = document.getElementById(`card_${moduleKey}`);
+    if (cardEl) cardEl.classList.add('active-card');
+
+    // 2. Stop any existing stream
+    await stopStream(false);
+
+    // 3. Prepare Video Output Section
+    const meta = MODULE_METADATA[moduleKey] || { title: moduleKey, badge: moduleKey };
+    document.getElementById('videoSection').style.display = 'block';
+    document.getElementById('activeModuleTitle').innerText = meta.title;
+    document.getElementById('telemetryModule').innerText = meta.badge;
+    document.getElementById('errorBanner').style.display = 'none';
+    showLoading(`Loading ${meta.badge} Neural Network...`);
+
+    // Smooth scroll to video section
+    document.getElementById('videoSection').scrollIntoView({ behavior: 'smooth' });
+
+    try {
+      const source = await resolveSourceForModule(moduleKey);
+      currentActiveModule = moduleKey;
+      currentActiveSource = source;
+
+      document.getElementById('telemetrySource').innerText = (source === '0') ? 'Live Webcam (Camera 0)' : source;
+
+      // 4. Set stream URL with unique timestamp to bypass browser caching
+      const streamImg = document.getElementById('streamImage');
+      const streamUrl = `/video_feed?module=${encodeURIComponent(moduleKey)}&source=${encodeURIComponent(source)}&t=${Date.now()}`;
+      streamImg.src = streamUrl;
+      isStreaming = true;
+
+      // Update indicator
+      const ind = document.getElementById('statusIndicator');
+      ind.style.background = '#00e676';
+      ind.style.boxShadow = '0 0 8px #00e676';
+    } catch (e) {
+      console.error(e);
+      hideLoading();
+    }
+  }
+
+  async function stopStream(userInitiated = true) {
+    if (isStreaming) {
+      try {
+        await fetch('/stop_stream');
+      } catch (err) {
+        console.warn('Stop stream call failed:', err);
+      }
+    }
+
+    const streamImg = document.getElementById('streamImage');
+    if (streamImg) {
+      streamImg.removeAttribute('src');
+    }
+
+    isStreaming = false;
+    hideLoading();
+
+    const ind = document.getElementById('statusIndicator');
+    if (ind) {
+      ind.style.background = '#e53935';
+      ind.style.boxShadow = '0 0 8px #e53935';
+    }
+
+    if (userInitiated) {
+      document.querySelectorAll('.detection-card').forEach(el => el.classList.remove('active-card'));
+    }
+  }
+
+  function restartStream() {
+    if (currentActiveModule) {
+      startDetection(currentActiveModule);
+    }
+  }
+
+  function hideVideoSection() {
+    stopStream(true);
+    document.getElementById('videoSection').style.display = 'none';
+  }
+
+  function showLoading(text) {
+    const overlay = document.getElementById('loadingOverlay');
+    const label = document.getElementById('loadingText');
+    if (label && text) label.innerText = text;
+    if (overlay) overlay.style.display = 'flex';
+  }
+
+  function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  function onStreamLoaded() {
+    hideLoading();
+  }
+
+  function onStreamError() {
+    if (isStreaming) {
+      showError('Stream disconnected or finished. Click Restart to replay.');
+      hideLoading();
+    }
+  }
+
+  function showError(msg) {
+    const banner = document.getElementById('errorBanner');
+    const text = document.getElementById('errorMessage');
+    if (text) text.innerText = msg;
+    if (banner) banner.style.display = 'block';
+  }
+
+  // Handle server-side legacy post initial load
+  window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialMod = "{{ initial_module | default('') }}";
+    const initialSrc = "{{ initial_source | default('') }}";
+
+    if (initialMod) {
+      if (initialSrc) {
+        currentActiveSource = initialSrc;
+      }
+      startDetection(initialMod);
+    }
+  });
+</script>
+
+</body>
+</html>
