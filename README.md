@@ -11,12 +11,13 @@ SHAS is a single Flask application that serves its own HTML templates and static
 - `requirements-render.txt` — pinned Python 3.9 CPU serving stack
 - `render.yaml` — Render web service, persistent disk, environment, and health-check configuration
 - `scripts/prepare_model_assets.py` — optionally provisions model files from a private tar.gz URL
+- `model_manifest.json` — expected model sizes and SHA-256 hashes used during provisioning and readiness checks
 
 ## Models and persistent data
 
 Five files are required for all dashboard detection modules: `kni_axe.pt`, `ACCIDENT.pt`, `fire.pt`, `yolov5s.pt`, and `model_new.h5`. They are intentionally not stored in Git. Provision the original files in the directory set by `SHAS_MODEL_DIR`; do not replace them with dummy models. `person.pt` is also retained locally but is not referenced by the dashboard's current model configuration.
 
-The Render Blueprint mounts a 10 GB persistent disk at `/var/data`, storing models in `/var/data/models`, uploads in `/var/data/uploads`, and SQLite data in `/var/data/user_data.db`. Set `SHAS_MODEL_ARCHIVE_URL` to a private `.tar.gz` archive containing the five model files (archive entries may be at the root or in subdirectories). If the URL requires a bearer token, set `SHAS_MODEL_ARCHIVE_TOKEN`. The startup helper downloads and extracts only the allow-listed model filenames. Without a configured archive or manually provisioned files, the service can start and serve the UI, but `/health/models` returns HTTP 503 and detection endpoints report the missing models.
+The Render Blueprint mounts a 10 GB persistent disk at `/var/data`, storing models in `/var/data/models`, uploads in `/var/data/uploads`, and SQLite data in `/var/data/user_data.db`. Set `SHAS_MODEL_ARCHIVE_URL` to a private `.tar.gz` archive containing the five model files (archive entries may be at the root or in subdirectories). If the URL requires a bearer token, set `SHAS_MODEL_ARCHIVE_TOKEN`. The startup helper only extracts the allow-listed files and verifies exact byte sizes and SHA-256 hashes against `model_manifest.json`. `/health/models` reports ready only after integrity checks and successful loading of every YOLO and action-recognition model. Without model files, it returns HTTP 503 and detection is unavailable.
 
 The original weights in the local working copy are preserved and remain excluded from Git. Create a private archive for transfer without adding it to the repository:
 
@@ -38,7 +39,7 @@ Copy-Item .env.example .env
 python app.py
 ```
 
-Open `http://127.0.0.1:5000`. `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are optional; alerts are disabled if they are not set. The app accepts `SHAS_DATA_DIR`, `SHAS_MODEL_DIR`, `SHAS_UPLOAD_DIR`, `SHAS_DATABASE_PATH`, and `SHAS_MAX_UPLOAD_BYTES` to place writable data outside the source directory.
+Open `http://127.0.0.1:5000`. `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are optional; alerts are disabled if they are not set. The app accepts `SHAS_DATA_DIR`, `SHAS_MODEL_DIR`, `SHAS_UPLOAD_DIR`, `SHAS_DATABASE_PATH`, and `SHAS_MAX_UPLOAD_BYTES` to place writable data outside the source directory. In production, set `SHAS_ENV=production` and provide a random private `SHAS_SECRET_KEY` of at least 32 random bytes through the host's environment settings.
 
 ## Deploy the backend on Render
 
@@ -54,10 +55,14 @@ Before expecting full detection, provision all five required model files on the 
 
 The service runs inference on CPU; video inference may be slower than a GPU workstation. A Render service cannot access a camera attached to the user's browser or local computer. Uploaded videos can be processed by the server. A persistent disk attaches to one service instance, so the configured single process/instance avoids relying on ephemeral local storage or in-memory coordination across replicas.
 
-## Production notes
+## Security
 
 - SQLite and uploaded media are stored on the persistent disk. Back up this disk/database according to your retention needs.
-- The existing login/registration code stores plaintext passwords and has no session-based authentication or CSRF protection. It is demonstration code and should not be exposed to untrusted users without a security redesign.
+- Registration stores Werkzeug scrypt password hashes. Existing plaintext passwords are upgraded in place after the owner's first successful login, preserving the current SQLite table and records.
+- Dashboard, upload, stop-stream, and video-stream endpoints require an authenticated session. State-changing requests require a session-bound CSRF token. Session cookies are HttpOnly, SameSite=Lax, and Secure in production.
+- Usernames, passwords, contact fields, file extensions, video signatures, upload names, and configured upload size are validated. Uploaded files receive collision-resistant names and detection sources are restricted to the upload and sample-video directories.
+- The Render production Blueprint requires `SHAS_SECRET_KEY`; set it as a private environment variable before the first deploy. Never place it, Telegram credentials, archive URLs, or tokens in Git.
+- Telegram bot tokens were present in earlier repository history and have been removed from the current source. Rotate previously exposed tokens; this cleanup does not rewrite Git history.
 - Webcam capture works only when a camera is physically accessible to the Python host; remote browser webcam access is not implemented.
 - Limit access to uploaded videos and detection output. Configure a production domain/TLS and review request-size limits before public use.
 - Do not use model results as the sole basis for safety-critical decisions.

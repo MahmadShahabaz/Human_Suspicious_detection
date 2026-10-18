@@ -7,7 +7,7 @@ services:
     branch: main
     buildCommand: pip install -r requirements-render.txt
     startCommand: python scripts/prepare_model_assets.py && gunicorn app:app --workers 1 --threads 4 --timeout 300 --bind 0.0.0.0:$PORT
-    healthCheckPath: /healthz
+    healthCheckPath: /health/models
     disk:
       name: shas-data
       mountPath: /var/data
@@ -17,6 +17,10 @@ services:
         value: 3.9.18
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: SHAS_ENV
+        value: production
+      - key: SHAS_SECRET_KEY
+        sync: false
       - key: WEB_CONCURRENCY
         value: "1"
       - key: SHAS_DATA_DIR

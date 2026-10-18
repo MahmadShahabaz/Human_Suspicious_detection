@@ -4,6 +4,7 @@
   <title>Suspicious Human Activity Detection and Alert System</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -304,7 +305,10 @@
     </div>
     <div class="collapse navbar-collapse" id="myNavbar">
       <ul class="nav navbar-nav navbar-right">
-        <li><a href="/" onclick="stopStream(false)"><span class="glyphicon glyphicon-log-out"></span> Logout</a></li>
+        <li><form method="post" action="{{ url_for('logout') }}" style="display:inline;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="navbar-link" style="background:none;border:0;padding:15px;color:#9d9d9d;"><span class="glyphicon glyphicon-log-out"></span> Logout</button>
+        </form></li>
       </ul>
     </div>
   </div>
@@ -503,7 +507,7 @@
         Source: <strong id="telemetrySource">None</strong>
       </div>
       <div class="telemetry-item">
-        Telegram Alerts: <strong style="color: #00e676;"><i class="fa fa-paper-plane"></i> Active (@Univarsalatm_bot)</strong>
+        Telegram Alerts: <strong style="color: {{ '#00e676' if telegram_enabled else '#b0bec5' }};"><i class="fa fa-paper-plane"></i> {{ 'Active' if telegram_enabled else 'Disabled' }}</strong>
       </div>
     </div>
   </div>
@@ -589,6 +593,7 @@
       try {
         const resp = await fetch('/upload_video', {
           method: 'POST',
+          headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
           body: formData
         });
         const data = await resp.json();
@@ -658,7 +663,10 @@
   async function stopStream(userInitiated = true) {
     if (isStreaming) {
       try {
-        await fetch('/stop_stream');
+        await fetch('/stop_stream', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }
+        });
       } catch (err) {
         console.warn('Stop stream call failed:', err);
       }

@@ -34,6 +34,7 @@ temp.txt
 *.h5
 *.onnx
 *.engine
+shas-models.tar.gz
 
 # Build/dependency artifacts
 build/

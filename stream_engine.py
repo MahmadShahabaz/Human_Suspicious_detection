@@ -189,21 +189,26 @@ def resolve_video_source(source_str):
     if source_clean in ('0', 'webcam', 'live', ''):
         return 0, 'Webcam (Live Camera 0)'
 
-    # Candidate file checks
-    candidate_paths = [
-        source_clean,
-        str(ROOT / source_clean),
-        str(UPLOAD_DIR / source_clean),
-        str(ROOT / 'test' / source_clean),
-        str(ROOT / 'testweapon' / source_clean),
-        str(ROOT / 'testaccident' / source_clean),
-        str(ROOT / 'testexplosion' / source_clean),
-        str(ROOT / 'testperson' / source_clean),
-    ]
+    requested = Path(source_clean)
+    candidate_paths = [requested, ROOT / requested, UPLOAD_DIR / requested.name]
+    candidate_paths.extend(directory / requested.name for directory in (
+        ROOT / 'test', ROOT / 'testweapon', ROOT / 'testaccident',
+        ROOT / 'testexplosion', ROOT / 'testperson',
+    ))
 
-    for p in candidate_paths:
-        if os.path.isfile(p):
-            return p, os.path.basename(p)
+    allowed_directories = [path.resolve() for path in (
+        UPLOAD_DIR, ROOT / 'test', ROOT / 'testweapon', ROOT / 'testaccident',
+        ROOT / 'testexplosion', ROOT / 'testperson',
+    )]
+    for candidate in candidate_paths:
+        try:
+            resolved = candidate.resolve(strict=True)
+        except (OSError, RuntimeError):
+            continue
+        if not resolved.is_file():
+            continue
+        if any(resolved == directory or resolved.is_relative_to(directory) for directory in allowed_directories):
+            return str(resolved), resolved.name
 
     return None, source_clean
 
